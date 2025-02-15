@@ -1,9 +1,6 @@
 import requests
 from fake_useragent import UserAgent
 import json
-from proxychecker import Checker
-
-#!!!!!!!!!!!need pip install -U 'requests[socks]'
 
 #########################################################################################
 #  В блоке "if update:" вручную задан каждый сервис тк они хранят данные в разном формате
