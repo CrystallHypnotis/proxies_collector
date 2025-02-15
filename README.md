@@ -1,5 +1,6 @@
 # proxies_collector
 Scripts get proxies from public hosts, check and sort them in files
+Only for http!
 
 
 #  В блоке "if update:" для каждого сервиса свой метод обработки, так как json и ключи в нём разные от сервиса к сервису и нужен индивидуальный подход)
