@@ -40,7 +40,7 @@ if update:
     proxies_list_second = [i for i in proxies_list_second]
 
 
-    with open('raw_proxy', mode='w') as out:
+    with open('./raw_proxy', mode='w') as out:
         for i in (proxies_list_first):
             out.write(f'{i['protocol'].lower()} {i['ip']}:{i['port']}' + '\n')
 
@@ -81,7 +81,7 @@ async def check_proxy(ip, protocol, verbose=True, timeout=timeout, url=url, time
 async def check_manager(url):
     proxies_list = []
 
-    with open('raw_proxy', mode='r') as inpt:
+    with open('./raw_proxy', mode='r') as inpt:
         for i in inpt.readlines():
             tmp = i.strip().split()
             proxies_list.append({'ip': tmp[1], 'protocol': tmp[0]})
