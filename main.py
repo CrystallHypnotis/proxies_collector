@@ -1,6 +1,9 @@
-import requests
-from fake_useragent import UserAgent
 import json
+import asyncio
+import aiohttp
+from aiohttp_socks import ProxyType, ProxyConnector, ChainProxyConnector
+import time
+
 
 #########################################################################################
 #  В блоке "if update:" вручную задан каждый сервис тк они хранят данные в разном формате
@@ -11,39 +14,21 @@ import json
 #  Флаг update: Нужно ли опять запрашивать данные с сайтов
 #  Флаг need_check: Нужно ли перепроверять полученные списки прокси
 #  Параметр timeout: максимальное время ожидание ответа сервера при использовании прокси
+#  Параметр times_to_try: количество попыток получение ответа 
 #
 #  Файл raw_proxy: Хранит только что полученный список прокси с сайтов
 #  Файл checked_proxy: Хранит проверенный список прокси с сайтов
 
 
 
-timeout = 1.9
-update = True
+
+update = False
 need_check = True
-url = 'http://httpbin.org/ip'
 
-def check_proxy(ip, protocol, verbose=True, timeout=timeout, url=url):
-    user_agent = UserAgent().random
-    headers = {'User-Agent': user_agent}
-    proxy_dict = {"http": f"{protocol}://{ip}"}
-
-    try:
-        response = requests.get(url, proxies=proxy_dict, headers=headers, timeout=timeout)
-
-        if response.status_code == 200:
-            time = int(response.elapsed.total_seconds() * 1000)
-
-            if verbose:
-                print(f"{ip} {protocol} ok, time: {time}ms")
-                print("----------------------------------------------------------")
-
-            return {'ip': ip, 'protocol': protocol}
-    
-    except Exception as e:
-        if verbose:
-            print(f"{ip} {protocol} error {e}")
-            print("----------------------------------------------------------")
-        return
+#url = 'http://httpbin.org/ip'
+url = 'https://www.google.ru/'
+timeout = 4
+times_to_try = 2
 
     
 if update:
@@ -55,10 +40,9 @@ if update:
     proxies_list_second = [i for i in proxies_list_second]
 
 
-
     with open('raw_proxy', mode='w') as out:
         for i in (proxies_list_first):
-            out.write(f'{i['protocol']} {i['ip']}:{i['port']}' + '\n')
+            out.write(f'{i['protocol'].lower()} {i['ip']}:{i['port']}' + '\n')
 
 
         for proxy in (proxies_list_second):
@@ -71,7 +55,30 @@ if update:
 
 
 
-if need_check:
+async def check_proxy(ip, protocol, verbose=True, timeout=timeout, url=url, times_to_try=times_to_try):
+    connector = ProxyConnector.from_url(f"{protocol}://{ip}")
+    error = None
+    async with aiohttp.ClientSession(connector=connector) as session:
+        for _ in range(times_to_try):
+            start = time.time()
+            try:
+                async with session.get(url, timeout=timeout) as response:
+                    end = time.time()
+                    print(f"{ip} {protocol} ok, time: {end - start}ms")
+                    print("----------------------------------------------------------")
+                    return {'ip': ip, 'protocol': protocol}
+
+            except Exception as e:
+                error = e
+                pass
+
+    if verbose:
+        print(f"{ip} {protocol} error {error}")
+        print("----------------------------------------------------------")
+    return
+
+
+async def check_manager(url):
     proxies_list = []
 
     with open('raw_proxy', mode='r') as inpt:
@@ -79,11 +86,17 @@ if need_check:
             tmp = i.strip().split()
             proxies_list.append({'ip': tmp[1], 'protocol': tmp[0]})
 
-    with open('checked_proxy', mode='w') as out:
-        for proxy in proxies_list:
-            res = check_proxy(proxy['ip'], proxy['protocol'])
-            if res:
-                out.write(f'{res['protocol']} {res['ip']} ' + '\n')
+    print('Start magic')
+    print("----------------------------------------------------------")
 
-            
-            
+    return await asyncio.gather(*[asyncio.ensure_future(check_proxy(proxy['ip'], proxy['protocol'])) for proxy in proxies_list])
+
+
+if need_check:
+    loop = asyncio.new_event_loop()
+    checked = [proxy for proxy in loop.run_until_complete(check_manager(url)) if proxy]
+    with open('checked_proxy', mode='w') as out:
+        for proxy in checked:
+            out.write(f'{proxy['protocol']} {proxy['ip']} ' + '\n')
+
+
