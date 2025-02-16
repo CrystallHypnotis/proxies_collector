@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 from aiohttp_socks import ProxyType, ProxyConnector, ChainProxyConnector
 import time
+import requests
 
 
 #########################################################################################
@@ -20,15 +21,13 @@ import time
 #  Файл checked_proxy: Хранит проверенный список прокси с сайтов
 
 
-
-
-update = False
+update = True
 need_check = True
 
 #url = 'http://httpbin.org/ip'
 url = 'https://www.google.ru/'
-timeout = 4
-times_to_try = 2
+timeout = 7
+times_to_try = 3
 
     
 if update:
@@ -95,8 +94,27 @@ async def check_manager(url):
 if need_check:
     loop = asyncio.new_event_loop()
     checked = [proxy for proxy in loop.run_until_complete(check_manager(url)) if proxy]
-    with open('checked_proxy', mode='w') as out:
+    with open('./checked_proxy', mode='w') as out:
         for proxy in checked:
             out.write(f'{proxy['protocol']} {proxy['ip']} ' + '\n')
 
+
+#Examples for aiohttp_socks
+#connector = ProxyConnector.from_url('socks5://user:password@127.0.0.1:1080')
+### or use ProxyConnector constructor
+# connector = ProxyConnector(
+#     proxy_type=ProxyType.SOCKS5,
+#     host='127.0.0.1',
+#     port=1080,
+#     username='user',
+#     password='password',
+#     rdns=True # default is True for socks5
+# )
+
+### proxy chaining (since ver 0.3.3)
+# connector = ChainProxyConnector.from_urls([
+#     'socks5://user:password@127.0.0.1:1080',
+#     'socks4://127.0.0.1:1081',
+#     'http://user:password@127.0.0.1:3128',
+# ])
 
